@@ -1,0 +1,2958 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>圣诞树</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000000;
+        font-family: 'Times New Roman', serif;
+      }
+      #canvas-container {
+        width: 100vw;
+        height: 100vh;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+      }
+
+      /* UI Overlay - Minimalist */
+      #ui-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 40px;
+        box-sizing: border-box;
+        /* Remove transition here as we don't hide the whole layer anymore */
+      }
+
+      /* When hidden class is applied to specific elements */
+      .ui-hidden {
+        opacity: 0;
+        pointer-events: none !important;
+      }
+
+      /* Loading */
+      #loader {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.8s ease-out;
+      }
+      .loader-text {
+        color: #d4af37;
+        font-size: 14px;
+        letter-spacing: 4px;
+        margin-top: 20px;
+        text-transform: uppercase;
+        font-weight: 100;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(212, 175, 55, 0.2);
+        border-top: 1px solid #d4af37;
+        border-radius: 50%;
+        -webkit-animation: spin 1s linear infinite;
+        -moz-animation: spin 1s linear infinite;
+        animation: spin 1s linear infinite;
+      }
+      @-webkit-keyframes spin {
+        0% {
+          -webkit-transform: rotate(0deg);
+        }
+        100% {
+          -webkit-transform: rotate(360deg);
+        }
+      }
+      @-moz-keyframes spin {
+        0% {
+          -moz-transform: rotate(0deg);
+        }
+        100% {
+          -moz-transform: rotate(360deg);
+        }
+      }
+      @keyframes spin {
+        0% {
+          -webkit-transform: rotate(0deg);
+          -moz-transform: rotate(0deg);
+          transform: rotate(0deg);
+        }
+        100% {
+          -webkit-transform: rotate(360deg);
+          -moz-transform: rotate(360deg);
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Typography - Centerpiece */
+      h1 {
+        color: #fceea7;
+        font-size: 56px;
+        margin: 0;
+        font-weight: 400;
+        letter-spacing: 6px;
+        text-shadow: 0 0 50px rgba(252, 238, 167, 0.6);
+        background: linear-gradient(to bottom, #fff, #eebb66);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-family: 'Cinzel', 'Times New Roman', serif;
+        opacity: 0.9;
+        transition: opacity 0.5s ease; /* Ensure smooth transitions if needed */
+      }
+
+      /* Upload Button - Restored & Elegant */
+      .upload-wrapper {
+        position: absolute;
+        top: 40px;
+        right: 40px;
+        pointer-events: auto;
+        text-align: center;
+        transition: opacity 0.5s ease; /* Add transition for smooth hiding */
+      }
+      .upload-btn {
+        background: rgba(20, 20, 20, 0.6);
+        border: 1px solid rgba(212, 175, 55, 0.4);
+        color: #d4af37;
+        padding: 10px 25px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        font-size: 10px;
+        transition: all 0.4s;
+        display: inline-block;
+        -webkit-backdrop-filter: blur(5px);
+        backdrop-filter: blur(5px);
+      }
+      .upload-btn:hover {
+        background: #d4af37;
+        color: #000;
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+      }
+      .hint-text {
+        color: rgba(212, 175, 55, 0.5);
+        font-size: 9px;
+        margin-top: 8px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      #file-input {
+        display: none;
+      }
+
+      /* Webcam feedback */
+      #webcam-wrapper {
+        position: absolute;
+        bottom: 40px;
+        right: 40px;
+        width: 160px;
+        height: 120px;
+        border: 2px solid rgba(212, 175, 55, 0.6);
+        border-radius: 4px;
+        overflow: hidden;
+        opacity: 1;
+        pointer-events: none;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        z-index: 50;
+      }
+
+      #webcam-preview {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      /* 帮助面板 - 左侧 */
+      #help-panel {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid rgba(212, 175, 55, 0.4);
+        border-radius: 8px;
+        padding: 20px;
+        max-width: 280px;
+        pointer-events: auto;
+        font-size: 13px;
+        line-height: 1.6;
+        transition: opacity 0.5s ease;
+      }
+
+      #help-panel h3 {
+        color: #d4af37;
+        margin: 0 0 15px 0;
+        border-bottom: 1px solid #d4af37;
+        padding-bottom: 10px;
+        font-size: 16px;
+      }
+
+      #help-panel p {
+        margin: 8px 0;
+        color: #ccc;
+      }
+
+      #help-panel code {
+        background: rgba(212, 175, 55, 0.15);
+        padding: 2px 6px;
+        border-radius: 3px;
+        color: #d4af37;
+        font-family: monospace;
+      }
+
+      #help-panel hr {
+        border: none;
+        border-top: 1px solid #d4af37;
+        margin: 12px 0;
+      }
+
+      /* UI隐藏类 */
+      .ui-hidden #help-panel,
+      .ui-hidden .upload-wrapper {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #webcam-wrapper.ui-hidden {
+        opacity: 0;
+        pointer-events: none !important;
+      }
+
+      /* 音乐控制区域 - 左下角 */
+      #music-controls {
+        position: absolute;
+        bottom: 40px;
+        left: 40px;
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      /* 音乐按钮组 */
+      .music-btn-group {
+        display: flex;
+        gap: 10px;
+      }
+
+      /* 音乐按钮样式 */
+      .music-btn {
+        background: rgba(20, 20, 20, 0.6);
+        border: 1px solid rgba(212, 175, 55, 0.4);
+        color: #d4af37;
+        padding: 10px 20px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        font-size: 10px;
+        transition: all 0.4s;
+        display: inline-block;
+        -webkit-backdrop-filter: blur(5px);
+        backdrop-filter: blur(5px);
+        min-width: 80px;
+        text-align: center;
+      }
+      
+      .music-btn:hover {
+        background: #d4af37;
+        color: #000;
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+      }
+
+      .music-btn.playing {
+        background: rgba(212, 175, 55, 0.3);
+        border-color: #d4af37;
+        color: #fff;
+      }
+
+      /* 音乐状态显示 */
+      #music-status {
+        color: rgba(212, 175, 55, 0.7);
+        font-size: 9px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        text-align: center;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* 进度条容器 */
+      #music-progress-container {
+        width: 200px;
+        height: 8px;
+        background: rgba(212, 175, 55, 0.2);
+        border-radius: 4px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* 进度条 */
+      #music-progress {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, #d4af37, #ffd966);
+        border-radius: 4px;
+        transition: width 0.1s ease;
+      }
+
+      /* 进度条滑块 */
+      #music-progress-handle {
+        position: absolute;
+        top: 50%;
+        left: 0%;
+        width: 12px;
+        height: 12px;
+        background: #d4af37;
+        border: 2px solid #000;
+        border-radius: 50%;
+        -webkit-transform: translate(-50%, -50%);
+        -moz-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      #music-progress-container:hover #music-progress-handle {
+        opacity: 1;
+      }
+
+      /* 音量控制 */
+      #volume-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 5px;
+      }
+
+      #volume-icon {
+        color: rgba(212, 175, 55, 0.7);
+        font-size: 12px;
+        width: 16px;
+        text-align: center;
+      }
+
+      #volume-slider {
+        width: 100px;
+        height: 4px;
+        background: rgba(212, 175, 55, 0.2);
+        border-radius: 2px;
+        outline: none;
+        cursor: pointer;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+      }
+
+      #volume-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        width: 12px;
+        height: 12px;
+        background: #d4af37;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid #000;
+      }
+
+      #volume-slider::-moz-range-thumb {
+        width: 12px;
+        height: 12px;
+        background: #d4af37;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid #000;
+      }
+
+      #volume-value {
+        color: rgba(212, 175, 55, 0.7);
+        font-size: 9px;
+        width: 30px;
+        text-align: center;
+      }
+
+      /* 确保所有音乐相关按钮样式统一 */
+
+      /* 图片管理面板 */
+      #photo-manager {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+      }
+
+      #photo-manager.hidden {
+        display: none;
+      }
+
+      #manager-header {
+        color: #d4af37;
+        font-size: 24px;
+        margin-bottom: 30px;
+        text-align: center;
+        font-family: 'Cinzel', 'Times New Roman', serif;
+      }
+
+      #photo-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 150px);
+        gap: 20px;
+        max-width: 700px;
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 20px;
+      }
+
+      .photo-item {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        border: 2px solid #d4af37;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .photo-item img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: cover;
+      }
+
+      .delete-btn {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        width: 24px;
+        height: 24px;
+        background: #cc0000;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 14px;
+        border: 2px solid #000;
+        z-index: 1001;
+      }
+
+      #close-manager {
+        margin-top: 30px;
+        background: rgba(20, 20, 20, 0.6);
+        border: 1px solid rgba(212, 175, 55, 0.4);
+        color: #d4af37;
+        padding: 10px 25px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        font-size: 10px;
+        transition: all 0.4s;
+        -webkit-backdrop-filter: blur(5px);
+        backdrop-filter: blur(5px);
+      }
+
+      #close-manager:hover {
+        background: #d4af37;
+        color: #000;
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+      }
+
+      /* 照片名称显示 */
+      #photo-name-display {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, calc(-50% + 280px));
+        background: rgba(0, 0, 0, 0.85);
+        border: 2px solid #d4af37;
+        border-radius: 8px;
+        padding: 15px 30px;
+        color: #d4af37;
+        font-size: 28px;
+        font-weight: bold;
+        letter-spacing: 3px;
+        text-align: center;
+        pointer-events: none;
+        z-index: 999;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+        text-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
+        box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+        font-family: 'Cinzel', 'Times New Roman', serif;
+      }
+
+      #photo-name-display.show {
+        opacity: 1;
+      }
+    </style>
+
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+    </style>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+          "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm"
+        }
+      }
+    </script>
+    
+    <!-- 角色数据 -->
+    <script>
+      // 角色数据管理 - 共96位成员
+      // 角色数据管理
+window.characterData = [
+  {
+    id: 'character_1',
+    name: "请叫我非酋",
+    title: "西极男模",
+    desc: "社长，请叫我非酋。",
+    tags: ["社长"],
+    avatar: "/Static/characters/avatar/请叫我非酋.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed71c5157e1a886292aa.webp", "https://pic1.imgdb.cn/item/68e8ed74c5157e1a886292ab.webp", "https://pic1.imgdb.cn/item/68e8ed75c5157e1a886292ac.webp", "https://pic1.imgdb.cn/item/68e8ed78c5157e1a886292af.webp", "https://pic1.imgdb.cn/item/68e8ed7ac5157e1a886292b0.webp"]
+  },
+  {
+    id: 'character_2',
+    name: "善法天",
+    title: "副社长",
+    desc: "副社长，善法天。",
+    tags: ["副社长"],
+    avatar: "/Static/characters/avatar/善法天.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ecdac5157e1a88629273.webp", "https://pic1.imgdb.cn/item/68e8ecdfc5157e1a88629275.webp"]
+  },
+  {
+    id: 'character_3',
+    name: "大家闺秀",
+    title: "成员",
+    desc: "成员，大家闺秀。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/大家闺秀.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed43c5157e1a8862929b.webp"]
+  },
+  {
+    id: 'character_4',
+    name: "浮羽渡寒川",
+    title: "成员",
+    desc: "成员，浮羽渡寒川。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/浮羽度寒川.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757396980580_qdqqd_sbec34.avif"
+    ]
+  },
+  {
+    id: 'character_5',
+    name: "橘子茶泡冰",
+    title: "成员",
+    desc: "成员，橘子茶泡冰。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/橘子茶泡冰.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397004514_qdqqd_q8jlps.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397006815_qdqqd_kxeqns.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397008464_qdqqd_jzx3nh.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397009952_qdqqd_vmkuos.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397011272_qdqqd_4ndpbs.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397012201_qdqqd_sobyzx.avif"
+    ]
+  },
+  {
+    id: 'character_6',
+    name: "风信子呀",
+    title: "成员",
+    desc: "成员，风信子呀。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/风信子啦.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397185939_qdqqd_p3jwtg.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397188354_qdqqd_luamiz.avif"
+    ]
+  },
+  {
+    id: 'character_7',
+    name: "江湖小生哦",
+    title: "成员",
+    desc: "成员，江湖小生哦。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/江湖小生哦.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8edaac5157e1a886292ce.webp", "https://pic1.imgdb.cn/item/68e8edaec5157e1a886292d0.webp", "https://pic1.imgdb.cn/item/68e8edb3c5157e1a886292d3.webp"]
+  },
+  {
+    id: 'character_8',
+    name: "沉默着欢喜",
+    title: "成员",
+    desc: "成员，沉默着欢喜。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/沉默着欢喜.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397350020_qdqqd_znw12b.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397351447_qdqqd_fblzb9.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397353136_qdqqd_8cymgg.avif"
+    ]
+  },
+  {
+    id: 'character_9',
+    name: "独孤箫瑶",
+    title: "成员",
+    desc: "成员，独孤箫瑶。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/独孤箫瑶.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398247352_qdqqd_fp884x.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398249733_qdqqd_p6ygrm.avif"
+    ]
+  },
+  {
+    id: 'character_10',
+    name: "小阳春梗",
+    title: "成员",
+    desc: "成员，小阳春梗。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/小阳春梗.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed35c5157e1a88629295.webp"]
+  },
+  {
+    id: 'character_11',
+    name: "许静影",
+    title: "成员",
+    desc: "成员，许静影。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/许静影.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8edc3c5157e1a886292d7.webp"]
+  },
+  {
+    id: 'character_12',
+    name: "昕璇凌",
+    title: "成员",
+    desc: "成员，昕璇凌。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/昕璇凌.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397842303_qdqqd_decdsj.avif"
+    ]
+  },
+  {
+    id: 'character_13',
+    name: "柳清洛",
+    title: "成员",
+    desc: "成员，柳清洛。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar22.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757397988662_qdqqd_p6vxpa.avif"
+    ]
+  },
+  {
+    id: 'character_14',
+    name: "月白似霜",
+    title: "成员",
+    desc: "成员，月白似霜。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/月白似霜.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398032293_qdqqd_50932h.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398034941_qdqqd_8pdkx8.avif"
+    ]
+  },
+  {
+    id: 'character_15',
+    name: "盲人司机",
+    title: "成员",
+    desc: "成员，盲人司机。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/盲人司机.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed8dc5157e1a886292b8.webp", "https://pic1.imgdb.cn/item/68e8ed92c5157e1a886292c3.webp", "https://pic1.imgdb.cn/item/68e8ed98c5157e1a886292c5.webp", "https://pic1.imgdb.cn/item/68e8ed9ec5157e1a886292ca.webp", "https://pic1.imgdb.cn/item/68e8eda8c5157e1a886292cc.webp"]
+  },
+  {
+    id: 'character_16',
+    name: "萧唤云",
+    title: "成员",
+    desc: "成员，萧唤云。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/萧唤云.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed05c5157e1a88629282.webp", "https://pic1.imgdb.cn/item/68e8ed07c5157e1a88629283.webp"]
+  },
+  {
+    id: 'character_17',
+    name: "江怜蔚",
+    title: "成员",
+    desc: "成员，江怜蔚。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/江怜蔚.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398285538_qdqqd_sklccb.avif"
+    ]
+  },
+  {
+    id: 'character_18',
+    name: "青衣负剑",
+    title: "成员",
+    desc: "成员，青衣负剑。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/青衣负剑.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed37c5157e1a88629296.webp", "https://pic1.imgdb.cn/item/68e8ed39c5157e1a88629297.webp", "https://pic1.imgdb.cn/item/68e8ed3bc5157e1a88629298.webp", "https://pic1.imgdb.cn/item/68e8ed3dc5157e1a88629299.webp", "https://pic1.imgdb.cn/item/68e8ed3ec5157e1a8862929a.webp"]
+  },
+  {
+    id: 'character_19',
+    name: "由八一",
+    title: "成员",
+    desc: "成员，由八一。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/由八一.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8edc0c5157e1a886292d6.webp"]
+  },
+  {
+    id: 'character_20',
+    name: "知旧林",
+    title: "成员",
+    desc: "成员，知旧林。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/知旧林.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8edb5c5157e1a886292d4.webp", "https://pic1.imgdb.cn/item/68e8edb8c5157e1a886292d5.webp"]
+  },
+  {
+    id: 'character_21',
+    name: "剑花夕辰",
+    title: "成员",
+    desc: "成员，剑花夕辰。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/剑花夕晨.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8edc9c5157e1a886292db.webp", "https://pic1.imgdb.cn/item/68e8edcbc5157e1a886292dc.webp", "https://pic1.imgdb.cn/item/68e8edcdc5157e1a886292dd.webp", "https://pic1.imgdb.cn/item/68e8edd0c5157e1a886292de.webp", "https://pic1.imgdb.cn/item/68e8edd5c5157e1a886292e0.webp", "https://pic1.imgdb.cn/item/68e8edd8c5157e1a886292e1.webp", "https://pic1.imgdb.cn/item/68e8eddec5157e1a886292e3.webp", "https://pic1.imgdb.cn/item/68e8ede2c5157e1a886292e4.webp", "https://pic1.imgdb.cn/item/68e8ede7c5157e1a886292e5.webp"]
+  },
+  {
+    id: 'character_22',
+    name: "神秀山、阮秀",
+    title: "顶级指挥",
+    desc: "成员，神秀山、阮秀。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/神秀山、阮秀.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1760017868476_qdqqd_bi7r6d.png"
+    ]
+  },
+  {
+    id: 'character_23',
+    name: "刘梦绮",
+    title: "成员",
+    desc: "成员，刘梦绮。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/劉梦琦.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ecd7c5157e1a88629270.webp"]
+  },
+  {
+    id: 'character_24',
+    name: "帝小萌",
+    title: "成员",
+    desc: "成员，帝小萌。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/帝小萌.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_25',
+    name: "千殇柔情",
+    title: "成员",
+    desc: "成员，千殇柔情。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/千殇柔情.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_26',
+    name: "楚云枊",
+    title: "成员",
+    desc: "成员，楚云枊。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/楚云枊.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8edebc5157e1a886292e9.webp"]
+  },
+  {
+    id: 'character_27',
+    name: "坟灼",
+    title: "成员",
+    desc: "成员，坟灼。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/坟灼.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_28',
+    name: "乘雲氣",
+    title: "成员",
+    desc: "成员，乘雲氣。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/乘云氣.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_29',
+    name: "晏雨雨",
+    title: "成员",
+    desc: "成员，晏雨雨。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_30',
+    name: "王珐财",
+    title: "成员",
+    desc: "成员，王珐财。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/王珐財.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_31',
+    name: "京祠",
+    title: "成员",
+    desc: "成员，京祠。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/京祠.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_32',
+    name: "玫瑾",
+    title: "成员",
+    desc: "成员，玫瑾。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/玫槿.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_33',
+    name: "月月如愿呢",
+    title: "成员",
+    desc: "成员，月月如愿呢。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/月月如愿呢.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_34',
+    name: "江水舡",
+    title: "成员",
+    desc: "成员，江水舡。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/江水舡.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_35',
+    name: "闪闪不是闪",
+    title: "成员",
+    desc: "成员，闪闪不是闪。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/闪闪不是闪.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_36',
+    name: "一根粗大腿",
+    title: "成员",
+    desc: "成员，一根粗大腿。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/一根粗大腿.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed83c5157e1a886292b3.webp", "https://pic1.imgdb.cn/item/68e8ed86c5157e1a886292b5.webp"]
+  },
+  {
+    id: 'character_37',
+    name: "鸾愔",
+    title: "成员",
+    desc: "成员，鸾愔。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/鸾愔.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_38',
+    name: "鹤歅",
+    title: "成员",
+    desc: "成员，鹤歅。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_39',
+    name: "学医救不了哎",
+    title: "成员",
+    desc: "成员，学医救不了哎。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/哎学医救不了.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_40',
+    name: "寒羽始翼",
+    title: "成员",
+    desc: "成员，寒羽始翼。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/寒翼始羽.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_41',
+    name: "若墨寒",
+    title: "成员",
+    desc: "成员，若墨寒。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/若墨寒.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_42',
+    name: "里里狸",
+    title: "成员",
+    desc: "成员，里里狸。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/里狸狸.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_43',
+    name: "濉倾城",
+    title: "成员",
+    desc: "成员，濉倾城。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/濉倾城.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_44',
+    name: "一玲宁",
+    title: "成员",
+    desc: "成员，一玲宁。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/一玲宁.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_45',
+    name: "玉锦逐",
+    title: "成员",
+    desc: "成员，玉锦逐。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_46',
+    name: "濯闻水",
+    title: "成员",
+    desc: "成员，濯闻水。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/濯闻水.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed12c5157e1a88629287.webp"]
+  },
+  {
+    id: 'character_47',
+    name: "如清秋",
+    title: "成员",
+    desc: "成员，如清秋。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_48',
+    name: "慕容冷若",
+    title: "成员",
+    desc: "成员，慕容冷若。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_49',
+    name: "鹅粮",
+    title: "成员",
+    desc: "成员，鹅粮。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_50',
+    name: "不该去羡慕",
+    title: "成员",
+    desc: "成员，不该去羡慕。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_51',
+    name: "栗安遥",
+    title: "成员",
+    desc: "成员，栗安遥。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/栗安遥.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8edc5c5157e1a886292d8.webp", "https://pic1.imgdb.cn/item/68e8edc7c5157e1a886292d9.webp"]
+  },
+  {
+    id: 'character_52',
+    name: "曲尽忘归尘",
+    title: "成员",
+    desc: "成员，曲尽忘归尘。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/曲尽忘归尘.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_53',
+    name: "寻悲琴",
+    title: "成员",
+    desc: "成员，寻悲琴。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/寻悲琴.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_54',
+    name: "快点补药啊",
+    title: "成员",
+    desc: "成员，快点补药啊。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/快点补药啊.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_55',
+    name: "夏夏策",
+    title: "成员",
+    desc: "成员，夏夏策。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/夏夏策.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_56',
+    name: "尘星傑",
+    title: "成员",
+    desc: "成员，尘星傑。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/尘星傑.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_57',
+    name: "阎枫浮",
+    title: "成员",
+    desc: "成员，阎枫浮。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/阎枫浮.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed5cc5157e1a886292a3.webp", "https://pic1.imgdb.cn/item/68e8ed5ec5157e1a886292a4.webp", "https://pic1.imgdb.cn/item/68e8ed62c5157e1a886292a5.webp", "https://pic1.imgdb.cn/item/68e8ed65c5157e1a886292a6.webp", "https://pic1.imgdb.cn/item/68e8ed68c5157e1a886292a7.webp", "https://pic1.imgdb.cn/item/68e8ed6bc5157e1a886292a8.webp"]
+  },
+  {
+    id: 'character_58',
+    name: "景知遥",
+    title: "成员",
+    desc: "成员，景知遥。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/景知遥.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_59',
+    name: "锦言",
+    title: "成员",
+    desc: "成员，锦言。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_60',
+    name: "徕柯",
+    title: "成员",
+    desc: "成员，徕柯。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/徕珂.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed18c5157e1a88629289.webp", "https://pic1.imgdb.cn/item/68e8ed1cc5157e1a8862928a.webp"]
+  },
+  {
+    id: 'character_61',
+    name: "亓峇",
+    title: "成员",
+    desc: "成员，亓峇。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_62',
+    name: "余本鱼",
+    title: "成员",
+    desc: "成员，余本鱼。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_63',
+    name: "师晨",
+    title: "成员",
+    desc: "成员，师晨。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/师晨.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed48c5157e1a8862929c.webp"]
+  },
+  {
+    id: 'character_64',
+    name: "桉槐柠",
+    title: "成员",
+    desc: "成员，桉槐柠。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/桉槐宁.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed50c5157e1a886292a0.webp", "https://pic1.imgdb.cn/item/68e8ed58c5157e1a886292a2.webp"]
+  },
+  {
+    id: 'character_65',
+    name: "圣主小雨",
+    title: "成员",
+    desc: "成员，圣主小雨。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/圣主小雨.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed1ec5157e1a8862928b.webp", "https://pic1.imgdb.cn/item/68e8ed22c5157e1a8862928c.webp", "https://pic1.imgdb.cn/item/68e8ed24c5157e1a8862928d.webp", "https://pic1.imgdb.cn/item/68e8ed28c5157e1a8862928e.webp"]
+  },
+  {
+    id: 'character_66',
+    name: "司空大河",
+    title: "成员",
+    desc: "成员，司空大河。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/司空大河.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed09c5157e1a88629284.webp", "https://pic1.imgdb.cn/item/68e8ed0bc5157e1a88629285.webp", "https://pic1.imgdb.cn/item/68e8ed10c5157e1a88629286.webp"]
+  },
+  {
+    id: 'character_67',
+    name: "江欣堰",
+    title: "成员",
+    desc: "成员，江欣堰。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/江欣俨.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed6dc5157e1a886292a9.webp"]
+  },
+  {
+    id: 'character_68',
+    name: "苏显儿",
+    title: "成员",
+    desc: "成员，苏显儿。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/苏显儿.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_69',
+    name: "梧桐青鸟",
+    title: "成员",
+    desc: "成员，梧桐青鸟。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_70',
+    name: "黑种草子",
+    title: "成员",
+    desc: "成员，黑种草子。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_71',
+    name: "䀜光",
+    title: "成员",
+    desc: "成员，䀜光。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_72',
+    name: "慕之禾",
+    title: "成员",
+    desc: "成员，慕之禾。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_73',
+    name: "山外云",
+    title: "成员",
+    desc: "成员，山外云。",
+    tags: ["成员"],
+    avatar: "https://gitee.com/tx-feng/FengHuaWuQue/raw/Vue/Static/player/avatar/avatar11.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_74',
+    name: "冬诗篇",
+    title: "成员",
+    desc: "成员，冬诗篇。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/冬诗篇.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398094217_qdqqd_yumaub.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398127831_qdqqd_guf314.avif",
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398131295_qdqqd_6qamva.avif"
+    ]
+  },
+  {
+    id: 'character_75',
+    name: "宛鹊",
+    title: "成员",
+    desc: "成员，宛鹊。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/宛鹊.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_76',
+    name: "夏小壹",
+    title: "成员",
+    desc: "成员，夏小壹。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/夏小壹.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_77',
+    name: "陈京泽",
+    title: "成员",
+    desc: "成员，陈京泽。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/陈京泽.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed2cc5157e1a88629290.webp", "https://pic1.imgdb.cn/item/68e8ed2fc5157e1a88629291.webp", "https://pic1.imgdb.cn/item/68e8ed31c5157e1a88629292.webp", "https://pic1.imgdb.cn/item/68e8ed33c5157e1a88629293.webp"]
+  },
+  {
+    id: 'character_78',
+    name: "狍子",
+    title: "成员",
+    desc: "成员，狍子。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/狍子.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_79',
+    name: "抬肘",
+    title: "成员",
+    desc: "成员，抬肘。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/抬肘.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_80',
+    name: "广陵散绝",
+    title: "成员",
+    desc: "成员，广陵散绝。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/广陵散绝.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_81',
+    name: "无偿转让牛牛",
+    title: "成员",
+    desc: "成员，无偿转让牛牛。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/无偿转让牛牛.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_82',
+    name: "灕阿清",
+    title: "成员",
+    desc: "成员，灕阿清。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/灕阿清.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_83',
+    name: "戚道一",
+    title: "成员",
+    desc: "成员，戚道一。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/戚道一.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_84',
+    name: "墨枫行",
+    title: "成员",
+    desc: "成员，墨枫行。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/墨枫行.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_85',
+    name: "元卿雨",
+    title: "成员",
+    desc: "成员，元卿雨。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/元卿雨.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_86',
+    name: "白米饭",
+    title: "成员",
+    desc: "成员，白米饭。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/白米饭.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_87',
+    name: "月栖春枝雨",
+    title: "成员",
+    desc: "成员，月栖春枝雨。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/月栖春枝雨.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ece1c5157e1a88629277.webp", "https://pic1.imgdb.cn/item/68e8ece5c5157e1a8862927a.webp", "https://pic1.imgdb.cn/item/68e8ed02c5157e1a88629281.webp"]
+  },
+  {
+    id: 'character_88',
+    name: "星星月月年",
+    title: "成员",
+    desc: "成员，星星月月年。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/星星月月年.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_89',
+    name: "灰红鲤妤",
+    title: "成员",
+    desc: "成员，灰红鲤妤。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/灰红鲤妤.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_90',
+    name: "女开熹",
+    title: "成员",
+    desc: "成员，女开熹。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/女开熹.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_91',
+    name: "吹泡泡吗",
+    title: "成员",
+    desc: "成员，吹泡泡吗。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/吹泡泡吗.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_92',
+    name: "中弦子",
+    title: "成员",
+    desc: "成员，中弦子。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/中弦子.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_93',
+    name: "祁涘",
+    title: "成员",
+    desc: "成员，祁涘。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/祁涘.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_94',
+    name: "江肃羽",
+    title: "成员",
+    desc: "成员，江肃羽。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/江肃羽.avif",
+    art: [
+      "https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757398092558_qdqqd_fqwyyr.avif"
+    ]
+  },
+  {
+    id: 'character_95',
+    name: "灰红鲤鱼",
+    title: "成员",
+    desc: "成员，灰红鲤鱼。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/灰红鲤妤.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed81c5157e1a886292b1.webp"]
+  },
+  {
+    id: 'character_96',
+    name: "元绾绾",
+    title: "成员",
+    desc: "成员，元绾绾。",
+    tags: ["成员"],
+    avatar: "/Static/characters/avatar/元卿雨.avif",
+    art: ["https://pic1.imgdb.cn/item/68e8ed2ac5157e1a8862928f.webp"]
+  }
+]
+
+// 获取角色数据的工具函数
+window.getCharacterById = (id) => {
+  return characterData.find(character => character.id === id)
+}
+
+window.getCharactersByTag = (tag) => {
+  return characterData.filter(character => character.tags.includes(tag))
+}
+
+    </script>
+  </head>
+  <body>
+    <div id="loader">
+      <div class="spinner"></div>
+      <div class="loader-text">Loading Holiday Magic</div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+      <!-- 左侧帮助面板 -->
+      <div id="help-panel">
+        <h3>🎄 控制说明</h3>
+        <p><code>👊</code> <b>握拳</b>：聚合树形</p>
+        <p><code>🖐️</code> <b>张开</b>：粒子散开</p>
+        <p><code>🤏</code> <b>捏夹</b>：照片聚焦</p>
+        <p><code>💖</code> <b>微信群</b>：睡不着打给我</p>
+        <hr />
+        <p><code>H</code> 键：隐藏UI</p>
+        <!-- <p style="font-size: 11px; color: #999; margin-top: 12px">
+          💡 可在上方上传照片
+        </p> -->
+      </div>
+
+      <h1>Merry Christmas</h1>
+
+
+
+      <!-- 音乐文件输入 -->
+      <input type="file" id="music-input" accept="audio/*" style="display: none;" />
+      
+      <!-- 音乐控制区域 -->
+      <div id="music-controls">
+        <!-- 按钮组：管理照片、上传照片、UI隐藏 -->
+        <div class="music-btn-group">
+          <button id="manage-photos-btn" class="music-btn">
+            管理照片
+          </button>
+          <label id="upload-photo-btn" class="music-btn">
+            上传照片
+            <input type="file" id="file-input" multiple accept="image/*" />
+          </label>
+          <button id="toggle-ui-btn" class="music-btn">
+            隐藏UI
+          </button>
+        </div>
+        
+        <!-- 音乐控制按钮组 -->
+        <div class="music-btn-group">
+          <button id="add-music-btn" class="music-btn">
+            添加音乐
+          </button>
+          <button id="play-pause-btn" class="music-btn">
+            播放
+          </button>
+        </div>
+        <div id="music-status">未选择音乐</div>
+        
+        <!-- 进度条控制 -->
+        <div id="music-progress-container">
+          <div id="music-progress"></div>
+          <div id="music-progress-handle"></div>
+        </div>
+        
+        <!-- 音量控制 -->
+        <div id="volume-control">
+          <div id="volume-icon">🔊</div>
+          <input type="range" id="volume-slider" min="0" max="100" value="80">
+          <div id="volume-value">80%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 图片管理面板 -->
+    <div id="photo-manager" class="hidden">
+      <h2 id="manager-header">照片管理</h2>
+      <div id="photo-grid"></div>
+      <button id="close-manager">关闭管理器</button>
+    </div>
+
+    <!-- 照片名称显示 -->
+    <div id="photo-name-display"></div>
+
+    <!-- Webcam hidden structure -->
+    <div id="webcam-wrapper">
+      <video id="webcam" autoplay muted playsinline style="display: none"></video>
+      <canvas id="webcam-preview"></canvas>
+    </div>
+
+    <script type="module">
+      import * as THREE from 'three'
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+      import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
+      import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
+      import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
+      import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
+      import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision'
+
+      // --- CONFIGURATION ---
+      const CONFIG = {
+        colors: {
+          bg: 0x000000,
+          champagneGold: 0xffd966,
+          deepGreen: 0x03180a,
+          accentRed: 0x990000,
+        },
+        particles: {
+          count: 1500,
+          dustCount: 2500,
+          treeHeight: 24,
+          treeRadius: 8,
+        },
+        camera: {
+          z: 50,
+        },
+      }
+
+      const STATE = {
+        mode: 'TREE',
+        focusIndex: -1,
+        focusTarget: null,
+        hand: { detected: false, x: 0, y: 0 },
+        rotation: { x: 0, y: 0 },
+      }
+
+      let scene, camera, renderer, composer
+      let mainGroup
+      let clock = new THREE.Clock()
+      let particleSystem = []
+      let photoMeshGroup = new THREE.Group()
+      let handLandmarker, video, webcamCanvas, webcamCtx
+      let caneTexture
+
+      async function init() {
+        initThree()
+        setupEnvironment()
+        setupLights()
+        createTextures()
+        createParticles()
+        createDust()
+        setupPostProcessing()
+        setupEvents()
+        initMusicSystem()
+        await initMediaPipe()
+        loadCharacterPhotos() // 自动加载 characters.js 中的照片
+
+        const loader = document.getElementById('loader')
+        loader.style.opacity = 0
+        setTimeout(() => loader.remove(), 800)
+
+        animate()
+      }
+
+      function initThree() {
+        const container = document.getElementById('canvas-container')
+        scene = new THREE.Scene()
+        scene.background = new THREE.Color(CONFIG.colors.bg)
+        scene.fog = new THREE.FogExp2(CONFIG.colors.bg, 0.01)
+
+        camera = new THREE.PerspectiveCamera(
+          42,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          1000
+        )
+        camera.position.set(0, 2, CONFIG.camera.z)
+
+        renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          alpha: false,
+          powerPreference: 'high-performance',
+        })
+        renderer.setSize(window.innerWidth, window.innerHeight)
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+        renderer.toneMapping = THREE.ReinhardToneMapping
+        renderer.toneMappingExposure = 2.2
+        container.appendChild(renderer.domElement)
+
+        mainGroup = new THREE.Group()
+        scene.add(mainGroup)
+      }
+
+      function setupEnvironment() {
+        const pmremGenerator = new THREE.PMREMGenerator(renderer)
+        scene.environment = pmremGenerator.fromScene(
+          new RoomEnvironment(),
+          0.04
+        ).texture
+      }
+
+      function setupLights() {
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6)
+        scene.add(ambient)
+
+        const innerLight = new THREE.PointLight(0xffaa00, 2, 20)
+        innerLight.position.set(0, 5, 0)
+        mainGroup.add(innerLight)
+
+        const spotGold = new THREE.SpotLight(0xffcc66, 1200)
+        spotGold.position.set(30, 40, 40)
+        spotGold.angle = 0.5
+        spotGold.penumbra = 0.5
+        scene.add(spotGold)
+
+        const spotBlue = new THREE.SpotLight(0x6688ff, 600)
+        spotBlue.position.set(-30, 20, -30)
+        scene.add(spotBlue)
+
+        const fill = new THREE.DirectionalLight(0xffeebb, 0.8)
+        fill.position.set(0, 0, 50)
+        scene.add(fill)
+      }
+
+      function setupPostProcessing() {
+        const renderScene = new RenderPass(scene, camera)
+        const bloomPass = new UnrealBloomPass(
+          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          1.5,
+          0.4,
+          0.85
+        )
+        bloomPass.threshold = 0.7
+        bloomPass.strength = 0.45
+        bloomPass.radius = 0.4
+
+        composer = new EffectComposer(renderer)
+        composer.addPass(renderScene)
+        composer.addPass(bloomPass)
+      }
+
+      function createTextures() {
+        const canvas = document.createElement('canvas')
+        canvas.width = 128
+        canvas.height = 128
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, 128, 128)
+        ctx.fillStyle = '#880000'
+        ctx.beginPath()
+        for (let i = -128; i < 256; i += 32) {
+          ctx.moveTo(i, 0)
+          ctx.lineTo(i + 32, 128)
+          ctx.lineTo(i + 16, 128)
+          ctx.lineTo(i - 16, 0)
+        }
+        ctx.fill()
+        caneTexture = new THREE.CanvasTexture(canvas)
+        caneTexture.wrapS = THREE.RepeatWrapping
+        caneTexture.wrapT = THREE.RepeatWrapping
+        caneTexture.repeat.set(3, 3)
+      }
+
+      class Particle {
+        constructor(mesh, type, isDust = false) {
+          this.mesh = mesh
+          this.type = type
+          this.isDust = isDust
+
+          this.posTree = new THREE.Vector3()
+          this.posScatter = new THREE.Vector3()
+          this.baseScale = mesh.scale.x
+
+          // Individual Spin Speed
+          // Photos spin slower to be readable
+          const speedMult = type === 'PHOTO' ? 0.3 : 2.0
+
+          this.spinSpeed = new THREE.Vector3(
+            (Math.random() - 0.5) * speedMult,
+            (Math.random() - 0.5) * speedMult,
+            (Math.random() - 0.5) * speedMult
+          )
+
+          this.calculatePositions()
+        }
+
+        calculatePositions() {
+          // TREE: Tight Spiral
+          const h = CONFIG.particles.treeHeight
+          const halfH = h / 2
+          let t = Math.random()
+          t = Math.pow(t, 0.8)
+          const y = t * h - halfH
+          let rMax = CONFIG.particles.treeRadius * (1.0 - t)
+          if (rMax < 0.5) rMax = 0.5
+          const angle = t * 50 * Math.PI + Math.random() * Math.PI
+          const r = rMax * (0.8 + Math.random() * 0.4)
+          this.posTree.set(Math.cos(angle) * r, y, Math.sin(angle) * r)
+
+          // SCATTER: 3D Sphere
+          let rScatter = this.isDust
+            ? 12 + Math.random() * 20
+            : 8 + Math.random() * 12
+          const theta = Math.random() * Math.PI * 2
+          const phi = Math.acos(2 * Math.random() - 1)
+          this.posScatter.set(
+            rScatter * Math.sin(phi) * Math.cos(theta),
+            rScatter * Math.sin(phi) * Math.sin(theta),
+            rScatter * Math.cos(phi)
+          )
+        }
+
+        update(dt, mode, focusTargetMesh) {
+          let target = this.posTree
+
+          if (mode === 'SCATTER') target = this.posScatter
+          else if (mode === 'FOCUS') {
+            if (this.mesh === focusTargetMesh) {
+              const desiredWorldPos = new THREE.Vector3(0, 2, 35)
+              const invMatrix = new THREE.Matrix4()
+                .copy(mainGroup.matrixWorld)
+                .invert()
+              target = desiredWorldPos.applyMatrix4(invMatrix)
+            } else {
+              target = this.posScatter
+            }
+          }
+
+          // Movement Easing
+          const lerpSpeed =
+            mode === 'FOCUS' && this.mesh === focusTargetMesh ? 5.0 : 2.0
+          this.mesh.position.lerp(target, lerpSpeed * dt)
+
+          // Rotation Logic - CRITICAL: Ensure spin happens in Scatter
+          if (mode === 'SCATTER') {
+            this.mesh.rotation.x += this.spinSpeed.x * dt
+            this.mesh.rotation.y += this.spinSpeed.y * dt
+            this.mesh.rotation.z += this.spinSpeed.z * dt // Added Z for more natural tumble
+          } else if (mode === 'TREE') {
+            // Reset rotations slowly
+            this.mesh.rotation.x = THREE.MathUtils.lerp(
+              this.mesh.rotation.x,
+              0,
+              dt
+            )
+            this.mesh.rotation.z = THREE.MathUtils.lerp(
+              this.mesh.rotation.z,
+              0,
+              dt
+            )
+            this.mesh.rotation.y += 0.5 * dt
+          }
+
+          if (mode === 'FOCUS' && this.mesh === focusTargetMesh) {
+            this.mesh.lookAt(camera.position)
+          }
+
+          // Scale Logic
+          let s = this.baseScale
+          if (this.isDust) {
+            s =
+              this.baseScale *
+              (0.8 + 0.4 * Math.sin(clock.elapsedTime * 4 + this.mesh.id))
+            if (mode === 'TREE') s = 0
+          } else if (mode === 'SCATTER' && this.type === 'PHOTO') {
+            // Large preview size in scatter
+            s = this.baseScale * 2.5
+          } else if (mode === 'FOCUS') {
+            if (this.mesh === focusTargetMesh) s = 4.5
+            else s = this.baseScale * 0.8
+          }
+
+          this.mesh.scale.lerp(new THREE.Vector3(s, s, s), 4 * dt)
+        }
+      }
+
+      // --- CREATION ---
+      function createParticles() {
+        const sphereGeo = new THREE.SphereGeometry(0.5, 32, 32)
+        const boxGeo = new THREE.BoxGeometry(0.55, 0.55, 0.55)
+        const curve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0, -0.5, 0),
+          new THREE.Vector3(0, 0.3, 0),
+          new THREE.Vector3(0.1, 0.5, 0),
+          new THREE.Vector3(0.3, 0.4, 0),
+        ])
+        const candyGeo = new THREE.TubeGeometry(curve, 16, 0.08, 8, false)
+
+        const goldMat = new THREE.MeshStandardMaterial({
+          color: CONFIG.colors.champagneGold,
+          metalness: 1.0,
+          roughness: 0.1,
+          envMapIntensity: 2.0,
+          emissive: 0x443300,
+          emissiveIntensity: 0.3,
+        })
+
+        const greenMat = new THREE.MeshStandardMaterial({
+          color: CONFIG.colors.deepGreen,
+          metalness: 0.2,
+          roughness: 0.8,
+          emissive: 0x002200,
+          emissiveIntensity: 0.2,
+        })
+
+        const redMat = new THREE.MeshPhysicalMaterial({
+          color: CONFIG.colors.accentRed,
+          metalness: 0.3,
+          roughness: 0.2,
+          clearcoat: 1.0,
+          emissive: 0x330000,
+        })
+
+        const candyMat = new THREE.MeshStandardMaterial({
+          map: caneTexture,
+          roughness: 0.4,
+        })
+
+        for (let i = 0; i < CONFIG.particles.count; i++) {
+          const rand = Math.random()
+          let mesh, type
+
+          if (rand < 0.4) {
+            mesh = new THREE.Mesh(boxGeo, greenMat)
+            type = 'BOX'
+          } else if (rand < 0.7) {
+            mesh = new THREE.Mesh(boxGeo, goldMat)
+            type = 'GOLD_BOX'
+          } else if (rand < 0.92) {
+            mesh = new THREE.Mesh(sphereGeo, goldMat)
+            type = 'GOLD_SPHERE'
+          } else if (rand < 0.97) {
+            mesh = new THREE.Mesh(sphereGeo, redMat)
+            type = 'RED'
+          } else {
+            mesh = new THREE.Mesh(candyGeo, candyMat)
+            type = 'CANE'
+          }
+
+          const s = 0.4 + Math.random() * 0.5
+          mesh.scale.set(s, s, s)
+          mesh.rotation.set(
+            Math.random() * 6,
+            Math.random() * 6,
+            Math.random() * 6
+          )
+
+          mainGroup.add(mesh)
+          particleSystem.push(new Particle(mesh, type, false))
+        }
+
+        // 创建立体3D五角星
+        function create3DStar(outerRadius, innerRadius, thickness) {
+          const geometry = new THREE.BufferGeometry()
+          const vertices = []
+          const indices = []
+          const points = 5
+          
+          // 计算五角星的10个顶点（外角和内角交替）
+          const starPoints2D = []
+          for (let i = 0; i < points * 2; i++) {
+            const radius = i % 2 === 0 ? outerRadius : innerRadius
+            const angle = (i * Math.PI) / points - Math.PI / 2
+            starPoints2D.push({
+              x: Math.cos(angle) * radius,
+              y: Math.sin(angle) * radius
+            })
+          }
+          
+          // 中心点索引
+          const centerFront = 0
+          const centerBack = 1
+          // 前面突出的尖点
+          const frontTip = 2
+          // 后面突出的尖点  
+          const backTip = 3
+          // 星星边缘点从索引4开始
+          const edgeStart = 4
+          
+          // 添加中心点（前后）
+          vertices.push(0, 0, thickness)  // 前中心突出
+          vertices.push(0, 0, -thickness) // 后中心突出
+          vertices.push(0, 0, thickness * 1.5)  // 前尖
+          vertices.push(0, 0, -thickness * 1.5) // 后尖
+          
+          // 添加边缘点（在z=0平面上）
+          for (let i = 0; i < starPoints2D.length; i++) {
+            vertices.push(starPoints2D[i].x, starPoints2D[i].y, 0)
+          }
+          
+          // 创建前面的三角形（从中心到边缘）
+          for (let i = 0; i < 10; i++) {
+            const curr = edgeStart + i
+            const next = edgeStart + ((i + 1) % 10)
+            // 前面
+            indices.push(centerFront, curr, next)
+            // 后面
+            indices.push(centerBack, next, curr)
+          }
+          
+          geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+          geometry.setIndex(indices)
+          geometry.computeVertexNormals()
+          
+          return geometry
+        }
+        
+        const starGeo = create3DStar(1.5, 0.6, 0.4)
+        const starMat = new THREE.MeshStandardMaterial({
+          color: 0xffdd88,
+          emissive: 0xffaa00,
+          emissiveIntensity: 1.0,
+          metalness: 1.0,
+          roughness: 0,
+          side: THREE.DoubleSide
+        })
+        const star = new THREE.Mesh(starGeo, starMat)
+        star.position.set(0, CONFIG.particles.treeHeight / 2 + 1.5, 0)
+        star.rotation.z = Math.PI  // 让星星尖朝上
+        mainGroup.add(star)
+
+        mainGroup.add(photoMeshGroup)
+      }
+
+      function createDust() {
+        const geo = new THREE.TetrahedronGeometry(0.08, 0)
+        const mat = new THREE.MeshBasicMaterial({
+          color: 0xffeebb,
+          transparent: true,
+          opacity: 0.8,
+        })
+
+        for (let i = 0; i < CONFIG.particles.dustCount; i++) {
+          const mesh = new THREE.Mesh(geo, mat)
+          mesh.scale.setScalar(0.5 + Math.random())
+          mainGroup.add(mesh)
+          particleSystem.push(new Particle(mesh, 'DUST', true))
+        }
+      }
+
+
+
+      function addPhotoToScene(texture, characterName = null) {
+        // 获取图片原始尺寸，计算宽高比
+        const imgWidth = texture.image.width
+        const imgHeight = texture.image.height
+        const aspectRatio = imgWidth / imgHeight
+        
+        // 基础尺寸，根据宽高比调整
+        const baseSize = 1.2
+        let photoWidth, photoHeight
+        
+        if (aspectRatio > 1) {
+          // 横向图片
+          photoWidth = baseSize
+          photoHeight = baseSize / aspectRatio
+        } else {
+          // 竖向图片或正方形
+          photoWidth = baseSize * aspectRatio
+          photoHeight = baseSize
+        }
+        
+        const group = new THREE.Group()
+        
+        // 创建发光边框效果 - 多层渐变
+        const glowLayers = [
+          { scale: 1.25, opacity: 0.15, color: 0xffd700 },
+          { scale: 1.18, opacity: 0.25, color: 0xffcc00 },
+          { scale: 1.12, opacity: 0.4, color: 0xdaa520 },
+          { scale: 1.06, opacity: 0.6, color: 0xb8860b }
+        ]
+        
+        glowLayers.forEach((layer, index) => {
+          const glowGeo = new THREE.PlaneGeometry(photoWidth * layer.scale, photoHeight * layer.scale)
+          const glowMat = new THREE.MeshBasicMaterial({
+            color: layer.color,
+            transparent: true,
+            opacity: layer.opacity,
+            side: THREE.DoubleSide
+          })
+          const glow = new THREE.Mesh(glowGeo, glowMat)
+          glow.position.z = -0.02 - index * 0.005
+          group.add(glow)
+        })
+        
+        // 金色细边框
+        const borderWidth = 0.02
+        const borderColor = 0xdaa520
+        
+        // 上边框
+        const topBorder = new THREE.Mesh(
+          new THREE.PlaneGeometry(photoWidth + borderWidth * 2, borderWidth),
+          new THREE.MeshBasicMaterial({ color: borderColor })
+        )
+        topBorder.position.set(0, photoHeight / 2 + borderWidth / 2, 0.01)
+        group.add(topBorder)
+        
+        // 下边框
+        const bottomBorder = new THREE.Mesh(
+          new THREE.PlaneGeometry(photoWidth + borderWidth * 2, borderWidth),
+          new THREE.MeshBasicMaterial({ color: borderColor })
+        )
+        bottomBorder.position.set(0, -photoHeight / 2 - borderWidth / 2, 0.01)
+        group.add(bottomBorder)
+        
+        // 左边框
+        const leftBorder = new THREE.Mesh(
+          new THREE.PlaneGeometry(borderWidth, photoHeight),
+          new THREE.MeshBasicMaterial({ color: borderColor })
+        )
+        leftBorder.position.set(-photoWidth / 2 - borderWidth / 2, 0, 0.01)
+        group.add(leftBorder)
+        
+        // 右边框
+        const rightBorder = new THREE.Mesh(
+          new THREE.PlaneGeometry(borderWidth, photoHeight),
+          new THREE.MeshBasicMaterial({ color: borderColor })
+        )
+        rightBorder.position.set(photoWidth / 2 + borderWidth / 2, 0, 0.01)
+        group.add(rightBorder)
+        
+        // 四角装饰光点
+        const cornerSize = 0.06
+        const cornerPositions = [
+          [-photoWidth / 2, photoHeight / 2],
+          [photoWidth / 2, photoHeight / 2],
+          [-photoWidth / 2, -photoHeight / 2],
+          [photoWidth / 2, -photoHeight / 2]
+        ]
+        
+        cornerPositions.forEach(pos => {
+          const corner = new THREE.Mesh(
+            new THREE.CircleGeometry(cornerSize, 16),
+            new THREE.MeshBasicMaterial({ 
+              color: 0xffd700, 
+              transparent: true, 
+              opacity: 0.8 
+            })
+          )
+          corner.position.set(pos[0], pos[1], 0.02)
+          group.add(corner)
+        })
+
+        // 照片本身
+        const photoGeo = new THREE.PlaneGeometry(photoWidth, photoHeight)
+        const photoMat = new THREE.MeshBasicMaterial({ map: texture })
+        const photo = new THREE.Mesh(photoGeo, photoMat)
+        photo.position.z = 0.03
+        group.add(photo)
+
+        const s = 0.8
+        group.scale.set(s, s, s)
+
+        // 存储角色名称
+        group.userData.characterName = characterName
+
+        photoMeshGroup.add(group)
+        particleSystem.push(new Particle(group, 'PHOTO', false))
+      }
+
+      function handleImageUpload(e) {
+        const files = e.target.files
+        if (!files.length) return
+        Array.from(files).forEach((f) => {
+          const reader = new FileReader()
+          reader.onload = (ev) => {
+            new THREE.TextureLoader().load(ev.target.result, (t) => {
+              t.colorSpace = THREE.SRGBColorSpace
+              addPhotoToScene(t)
+            })
+          }
+          reader.readAsDataURL(f)
+        })
+      }
+
+      // 加载 characters.js 中的所有照片（每人最多取2张）
+      function loadCharacterPhotos() {
+        const loader = new THREE.TextureLoader()
+        
+        // 从全局 window.characterData 获取数据
+        const characterData = window.characterData
+        if (!characterData) {
+          console.error('未找到 characterData，请确保 characters.js 已加载')
+          return
+        }
+        
+        // 收集每个角色的前两张图片（如果有的话）
+        const photoData = []
+        characterData.forEach(character => {
+          if (character.art && Array.isArray(character.art) && character.art.length > 0) {
+            // 只取第一张图片
+            const photosToLoad = character.art.slice(0, 1)
+            photosToLoad.forEach(url => {
+              photoData.push({
+                url: url,
+                name: character.name
+              })
+            })
+          }
+        })
+
+        console.log(`正在加载 ${photoData.length} 张照片（每人最多2张）...`)
+
+        // 逐个加载图片
+        photoData.forEach((data, index) => {
+          loader.load(
+            data.url,
+            (texture) => {
+              texture.colorSpace = THREE.SRGBColorSpace
+              addPhotoToScene(texture, data.name)
+              console.log(`已加载照片 ${index + 1}/${photoData.length}: ${data.name}`)
+            },
+            undefined,
+            (error) => {
+              console.error(`加载照片失败 (${index + 1}/${photoData.length}):`, data.url, error)
+            }
+          )
+        })
+      }
+
+      // --- MEDIAPIPE ---
+      async function initMediaPipe() {
+        video = document.getElementById('webcam')
+        webcamCanvas = document.getElementById('webcam-preview')
+        webcamCtx = webcamCanvas.getContext('2d')
+        webcamCanvas.width = 160
+        webcamCanvas.height = 120
+
+        const vision = await FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm'
+        )
+        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+            delegate: 'GPU',
+          },
+          runningMode: 'VIDEO',
+          numHands: 1,
+        })
+
+        if (navigator.mediaDevices?.getUserMedia) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              video: { width: 640, height: 480 },
+            })
+            video.srcObject = stream
+            video.muted = true
+
+            // 重要：确保播放视频
+            const playPromise = video.play()
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  console.log('Video playing successfully')
+                  requestAnimationFrame(predictWebcam)
+                })
+                .catch((err) => {
+                  console.error('Video play failed:', err)
+                })
+            }
+          } catch (error) {
+            console.error('Failed to access camera:', error)
+          }
+        }
+      }
+
+      let lastVideoTime = -1
+      async function predictWebcam() {
+        if (video.currentTime !== lastVideoTime) {
+          lastVideoTime = video.currentTime
+          if (handLandmarker) {
+            const result = handLandmarker.detectForVideo(
+              video,
+              performance.now()
+            )
+            processGestures(result)
+          }
+        }
+
+        // Draw video frame to canvas
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          webcamCtx.drawImage(video, 0, 0, webcamCanvas.width, webcamCanvas.height)
+        }
+
+        requestAnimationFrame(predictWebcam)
+      }
+
+      function processGestures(result) {
+        if (result.landmarks && result.landmarks.length > 0) {
+          STATE.hand.detected = true
+          const lm = result.landmarks[0]
+          STATE.hand.x = (lm[9].x - 0.5) * 2
+          STATE.hand.y = (lm[9].y - 0.5) * 2
+
+          const thumb = lm[4]
+          const index = lm[8]
+          const wrist = lm[0]
+          const palm = lm[9] // 手掌中心
+
+          // 捏夹距离：大拇指和食指
+          const pinchDist = Math.hypot(thumb.x - index.x, thumb.y - index.y)
+
+          // 握拳检测：计算所有手指尖到手掌中心的距离
+          const fingerTips = [lm[8], lm[12], lm[16], lm[20]]
+          let fistDistance = 0
+          fingerTips.forEach((tip) => {
+            fistDistance += Math.hypot(tip.x - palm.x, tip.y - palm.y)
+          })
+          fistDistance /= 4
+
+          // 张开手势：手指尖到手腕的平均距离
+          const tips = [lm[8], lm[12], lm[16], lm[20]]
+          let avgDist = 0
+          tips.forEach(
+            (t) => (avgDist += Math.hypot(t.x - wrist.x, t.y - wrist.y))
+          )
+          avgDist /= 4
+
+          // 修改逻辑：优先检查握拳（更严格），避免与捏夹冲突
+          if (fistDistance < 0.18) {
+            // 握拳：手指都靠近手掌中心
+            STATE.mode = 'TREE'
+            STATE.focusTarget = null
+          } else if (pinchDist < 0.045 && avgDist > 0.28) {
+            // 捏夹：大拇指和食指靠很近，且不是握拳状态
+            if (STATE.mode !== 'FOCUS') {
+              STATE.mode = 'FOCUS'
+              const photos = particleSystem.filter((p) => p.type === 'PHOTO')
+              if (photos.length)
+                STATE.focusTarget =
+                  photos[Math.floor(Math.random() * photos.length)].mesh
+            }
+          } else if (avgDist > 0.4) {
+            // 张开手势
+            STATE.mode = 'SCATTER'
+            STATE.focusTarget = null
+          }
+        } else {
+          STATE.hand.detected = false
+        }
+      }
+
+      // --- 音乐播放功能 ---
+      let audioContext, audioSource, audioBuffer, isPlaying = false, currentAudioFile = null
+      let gainNode, currentVolume = 0.8, isDraggingProgress = false
+
+      function initMusicSystem() {
+        // 创建音频上下文
+        audioContext = new (window.AudioContext || window.webkitAudioContext)()
+        
+        // 创建音量控制节点
+        gainNode = audioContext.createGain()
+        gainNode.gain.value = currentVolume
+        
+        // 设置音乐事件监听
+        setupMusicEvents()
+      }
+
+      function setupMusicEvents() {
+        // 添加音乐按钮事件
+        document.getElementById('add-music-btn').addEventListener('click', () => {
+          document.getElementById('music-input').click()
+        })
+
+        // 播放/暂停按钮事件
+        document.getElementById('play-pause-btn').addEventListener('click', togglePlayPause)
+
+        // 音乐文件选择事件
+        document.getElementById('music-input').addEventListener('change', handleMusicUpload)
+
+        // 音量控制事件
+        const volumeSlider = document.getElementById('volume-slider')
+        volumeSlider.addEventListener('input', handleVolumeChange)
+
+        // 进度条控制事件
+        const progressContainer = document.getElementById('music-progress-container')
+        progressContainer.addEventListener('click', handleProgressClick)
+        progressContainer.addEventListener('mousedown', startProgressDrag)
+        
+        // 全局鼠标事件用于进度条拖拽
+        document.addEventListener('mousemove', handleProgressDrag)
+        document.addEventListener('mouseup', stopProgressDrag)
+      }
+
+      function handleMusicUpload(e) {
+        const file = e.target.files[0]
+        if (!file) return
+
+        // 验证文件类型
+        const validTypes = ['audio/mpeg', 'audio/wav', 'audio/flac', 'audio/ogg', 'audio/mp3', 'audio/x-m4a']
+        if (!validTypes.includes(file.type) && !file.name.toLowerCase().match(/\.(mp3|wav|flac|ogg|m4a)$/)) {
+          updateMusicStatus('不支持的文件格式', true)
+          return
+        }
+
+        // 验证文件大小（最大50MB）
+        if (file.size > 50 * 1024 * 1024) {
+          updateMusicStatus('文件过大（最大50MB）', true)
+          return
+        }
+
+        updateMusicStatus('加载中...')
+        currentAudioFile = file
+
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          audioContext.decodeAudioData(event.target.result, (buffer) => {
+            audioBuffer = buffer
+            updateMusicStatus(`已加载: ${file.name}`)
+            // 自动播放
+            if (isPlaying) {
+              stopAudio()
+            }
+            playAudio()
+          }, (error) => {
+            console.error('音频解码错误:', error)
+            updateMusicStatus('音频文件损坏', true)
+          })
+        }
+        reader.onerror = () => {
+          updateMusicStatus('文件读取失败', true)
+        }
+        reader.readAsArrayBuffer(file)
+      }
+
+      function playAudio() {
+        if (!audioBuffer) return
+
+        if (audioSource) {
+          audioSource.stop()
+        }
+
+        audioSource = audioContext.createBufferSource()
+        audioSource.buffer = audioBuffer
+        audioSource.loop = true
+        audioSource.connect(gainNode)
+        gainNode.connect(audioContext.destination)
+        audioSource.start(0)
+        
+        isPlaying = true
+        updatePlayButton()
+        startProgressUpdate()
+      }
+
+      function stopAudio() {
+        if (audioSource) {
+          audioSource.stop()
+          audioSource = null
+        }
+        isPlaying = false
+        updatePlayButton()
+        stopProgressUpdate()
+      }
+
+      function togglePlayPause() {
+        if (!audioBuffer) {
+          updateMusicStatus('请先选择音乐文件', true)
+          return
+        }
+
+        if (isPlaying) {
+          stopAudio()
+        } else {
+          playAudio()
+        }
+      }
+
+      function updatePlayButton() {
+        const btn = document.getElementById('play-pause-btn')
+        btn.textContent = isPlaying ? '暂停' : '播放'
+        btn.classList.toggle('playing', isPlaying)
+      }
+
+      function updateMusicStatus(message, isError = false) {
+        const status = document.getElementById('music-status')
+        status.textContent = message
+        status.style.color = isError ? '#cc3333' : 'rgba(212, 175, 55, 0.7)'
+      }
+
+      let progressInterval
+      function startProgressUpdate() {
+        stopProgressUpdate()
+        progressInterval = setInterval(() => {
+          if (audioSource && audioBuffer && !isDraggingProgress) {
+            const progress = (audioContext.currentTime / audioBuffer.duration) * 100
+            const normalizedProgress = progress % 100
+            document.getElementById('music-progress').style.width = `${normalizedProgress}%`
+            document.getElementById('music-progress-handle').style.left = `${normalizedProgress}%`
+          }
+        }, 100)
+      }
+
+      function stopProgressUpdate() {
+        if (progressInterval) {
+          clearInterval(progressInterval)
+          progressInterval = null
+        }
+        document.getElementById('music-progress').style.width = '0%'
+        document.getElementById('music-progress-handle').style.left = '0%'
+      }
+
+      // --- 音量控制功能 ---
+      function handleVolumeChange(e) {
+        const volume = parseInt(e.target.value) / 100
+        currentVolume = volume
+        
+        if (gainNode) {
+          gainNode.gain.value = volume
+        }
+        
+        // 更新音量显示
+        document.getElementById('volume-value').textContent = `${e.target.value}%`
+        
+        // 更新音量图标
+        const volumeIcon = document.getElementById('volume-icon')
+        if (volume === 0) {
+          volumeIcon.textContent = '🔇'
+        } else if (volume < 0.3) {
+          volumeIcon.textContent = '🔈'
+        } else if (volume < 0.7) {
+          volumeIcon.textContent = '🔉'
+        } else {
+          volumeIcon.textContent = '🔊'
+        }
+      }
+
+      // --- 进度条控制功能 ---
+      function handleProgressClick(e) {
+        if (!audioBuffer || !audioSource) return
+        
+        const progressContainer = e.currentTarget
+        const rect = progressContainer.getBoundingClientRect()
+        const clickX = e.clientX - rect.left
+        const percentage = Math.max(0, Math.min(1, clickX / rect.width))
+        
+        seekToPosition(percentage)
+      }
+
+      function startProgressDrag(e) {
+        if (!audioBuffer || !audioSource) return
+        
+        isDraggingProgress = true
+        handleProgressDrag(e)
+      }
+
+      function handleProgressDrag(e) {
+        if (!isDraggingProgress || !audioBuffer || !audioSource) return
+        
+        const progressContainer = document.getElementById('music-progress-container')
+        const rect = progressContainer.getBoundingClientRect()
+        const dragX = e.clientX - rect.left
+        const percentage = Math.max(0, Math.min(1, dragX / rect.width))
+        
+        // 更新进度条显示
+        updateProgressDisplay(percentage)
+      }
+
+      function stopProgressDrag(e) {
+        if (!isDraggingProgress) return
+        
+        isDraggingProgress = false
+        
+        if (!audioBuffer || !audioSource) return
+        
+        const progressContainer = document.getElementById('music-progress-container')
+        const rect = progressContainer.getBoundingClientRect()
+        const dragX = e.clientX - rect.left
+        const percentage = Math.max(0, Math.min(1, dragX / rect.width))
+        
+        seekToPosition(percentage)
+      }
+
+      function seekToPosition(percentage) {
+        if (!audioBuffer || !audioSource) return
+        
+        const seekTime = percentage * audioBuffer.duration
+        
+        // 停止当前播放
+        audioSource.stop()
+        
+        // 创建新的音频源
+        audioSource = audioContext.createBufferSource()
+        audioSource.buffer = audioBuffer
+        audioSource.loop = true
+        audioSource.connect(gainNode)
+        gainNode.connect(audioContext.destination)
+        
+        // 从指定位置开始播放
+        audioSource.start(0, seekTime % audioBuffer.duration)
+        
+        // 更新进度显示
+        updateProgressDisplay(percentage)
+      }
+
+      function updateProgressDisplay(percentage) {
+        const progressBar = document.getElementById('music-progress')
+        const progressHandle = document.getElementById('music-progress-handle')
+        
+        progressBar.style.width = `${percentage * 100}%`
+        progressHandle.style.left = `${percentage * 100}%`
+      }
+
+      function setupEvents() {
+        window.addEventListener('resize', () => {
+          camera.aspect = window.innerWidth / window.innerHeight
+          camera.updateProjectionMatrix()
+          renderer.setSize(window.innerWidth, window.innerHeight)
+          composer.setSize(window.innerWidth, window.innerHeight)
+        })
+        document
+          .getElementById('file-input')
+          .addEventListener('change', handleImageUpload)
+
+        // 图片管理功能
+        document
+          .getElementById('manage-photos-btn')
+          .addEventListener('click', showPhotoManager)
+          
+        document
+          .getElementById('close-manager')
+          .addEventListener('click', hidePhotoManager)
+
+        // UI切换逻辑 - 隐藏/显示所有UI控件
+        function toggleUI() {
+          const uiLayer = document.getElementById('ui-layer')
+          const webcamWrapper = document.getElementById('webcam-wrapper')
+          if (uiLayer) {
+            uiLayer.classList.toggle('ui-hidden')
+          }
+          if (webcamWrapper) {
+            webcamWrapper.classList.toggle('ui-hidden')
+          }
+        }
+
+        // H键切换UI
+        window.addEventListener('keydown', (e) => {
+          if (e.key.toLowerCase() === 'h') {
+            toggleUI()
+          }
+        })
+
+        // 按钮切换UI
+        document.getElementById('toggle-ui-btn').addEventListener('click', toggleUI)
+      }
+
+      // 显示图片管理面板
+      function showPhotoManager() {
+        updatePhotoGrid()
+        document.getElementById('photo-manager').classList.remove('hidden')
+      }
+
+      // 隐藏图片管理面板
+      function hidePhotoManager() {
+        document.getElementById('photo-manager').classList.add('hidden')
+      }
+
+      // 更新图片网格
+      function updatePhotoGrid() {
+        const photoGrid = document.getElementById('photo-grid')
+        photoGrid.innerHTML = ''
+        
+        // 获取所有照片粒子
+        const photoParticles = particleSystem.filter(p => p.type === 'PHOTO')
+        
+        photoParticles.forEach((particle, index) => {
+          const photoItem = document.createElement('div')
+          photoItem.className = 'photo-item'
+          
+          // 获取照片纹理
+          const photoMesh = particle.mesh.children[1];
+          let imgUrl = '';
+          
+          if (photoMesh && photoMesh.material && photoMesh.material.map) {
+            const texture = photoMesh.material.map;
+            if (texture.image && texture.image.currentSrc) {
+              imgUrl = texture.image.currentSrc;
+            } else if (texture.image && texture.image.src) {
+              imgUrl = texture.image.src;
+            }
+          }
+          
+          photoItem.innerHTML = `
+            <img src="${imgUrl}" alt="Photo ${index + 1}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\" viewBox=\"0 0 24 24\"><rect width=\"24\" height=\"24\" fill=\"%23222\"/><text x=\"12\" y=\"16\" font-family=\"Arial\" font-size=\"12\" fill=\"%23ddd\" text-anchor=\"middle\">No Image</text></svg>'">
+            <div class="delete-btn" data-index="${index}">×</div>
+          `
+          photoGrid.appendChild(photoItem)
+        })
+        
+        // 添加删除按钮事件监听器
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const index = parseInt(this.getAttribute('data-index'))
+            deletePhoto(index)
+          })
+        })
+      }
+
+      // 删除照片
+      function deletePhoto(index) {
+        // 获取所有照片粒子
+        const photoParticles = particleSystem.filter(p => p.type === 'PHOTO')
+        
+        if (index >= 0 && index < photoParticles.length) {
+          const particleToDelete = photoParticles[index]
+          
+          // 从场景中移除网格
+          if (particleToDelete.mesh && particleToDelete.mesh.parent) {
+            particleToDelete.mesh.parent.remove(particleToDelete.mesh)
+          }
+          
+          // 从particleSystem数组中移除粒子
+          const particleIndex = particleSystem.indexOf(particleToDelete)
+          if (particleIndex > -1) {
+            particleSystem.splice(particleIndex, 1)
+          }
+          
+          // 从photoMeshGroup中移除
+          if (photoMeshGroup && particleToDelete.mesh) {
+            photoMeshGroup.remove(particleToDelete.mesh)
+          }
+          
+          // 更新照片网格
+          updatePhotoGrid()
+        }
+      }
+
+      function animate() {
+        requestAnimationFrame(animate)
+        const dt = clock.getDelta()
+
+        // Rotation Logic
+        if (STATE.mode === 'SCATTER' && STATE.hand.detected) {
+          const targetRotY = STATE.hand.x * Math.PI * 0.9
+          const targetRotX = STATE.hand.y * Math.PI * 0.25
+          STATE.rotation.y += (targetRotY - STATE.rotation.y) * 3.0 * dt
+          STATE.rotation.x += (targetRotX - STATE.rotation.x) * 3.0 * dt
+        } else {
+          if (STATE.mode === 'TREE') {
+            STATE.rotation.y += 0.3 * dt
+            STATE.rotation.x += (0 - STATE.rotation.x) * 2.0 * dt
+          } else {
+            STATE.rotation.y += 0.1 * dt
+          }
+        }
+
+        mainGroup.rotation.y = STATE.rotation.y
+        mainGroup.rotation.x = STATE.rotation.x
+
+        particleSystem.forEach((p) =>
+          p.update(dt, STATE.mode, STATE.focusTarget)
+        )
+        
+        // 更新照片名称显示
+        updatePhotoNameDisplay()
+        
+        composer.render()
+      }
+
+      // 更新照片名称显示
+      function updatePhotoNameDisplay() {
+        const photoNameDisplay = document.getElementById('photo-name-display')
+        
+        if (STATE.mode === 'FOCUS' && STATE.focusTarget) {
+          const characterName = STATE.focusTarget.userData.characterName
+          if (characterName) {
+            photoNameDisplay.textContent = characterName
+            photoNameDisplay.classList.add('show')
+          } else {
+            photoNameDisplay.classList.remove('show')
+          }
+        } else {
+          photoNameDisplay.classList.remove('show')
+        }
+      }
+
+      init()
+    </script>
+  </body>
+</html>
